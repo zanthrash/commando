@@ -12,12 +12,10 @@ import org.codehaus.groovy.grails.plugins.DomainClassPluginSupport
 class CommandoGrailsPlugin {
     def version = 0.1
     def grailsVersion = grails.util.GrailsUtil.getGrailsVersion()
-    def dependsOn = [core:grailsVersion]
-	def watchedResources = ["file:./grails-app/controllers/**/*Controller.groovy",
-            "file:./plugins/*/grails-app/controllers/**/*Controller.groovy",
-            "file:./plugins/*/grails-app/taglib/**/*TagLib.groovy",
-            "file:./grails-app/taglib/**/*TagLib.groovy"]
-    //def observe = ["controllers"]
+    def dependsOn = [core:1.1]
+    def loadAfter = ['hibernate', 'controllers']
+	
+    def observe = ["controllers"]
     def author = "Zan Thrash"
     def authorEmail = "zan@zanthrash.com"
     def title = "Commando"
@@ -43,44 +41,49 @@ always passs as a parameter to your action.
 
     def doWithDynamicMethods = { ctx ->
         application.controllerClasses.each { controller ->
-			controller.metaClass.createCommand = { commandObjectClass,params ->
-				def commandObject = commandObjectClass.newInstance()
-                def commandObjectMetaClass = commandObjectClass.metaClass
-            
-                commandObjectMetaClass.setErrors = {Errors errors ->
-                    RCH.currentRequestAttributes().setAttribute("${commandObjectClass.name}_errors", errors, 0)
-                }
-                commandObjectMetaClass.getErrors = {->
-                    RCH.currentRequestAttributes().getAttribute("${commandObjectClass.name}_errors", 0)
-                }
-
-                commandObjectMetaClass.hasErrors = {->
-                    errors?.hasErrors() ? true : false
-                }
-                commandObjectMetaClass.validate = {->
-                    DomainClassPluginSupport.validateInstance(delegate, ctx)
-                }
-                def validationClosure = GCU.getStaticPropertyValue(commandObjectClass, 'constraints')
-                if (validationClosure) {
-                    def constrainedPropertyBuilder = new ConstrainedPropertyBuilder(commandObject)
-                    validationClosure.setDelegate(constrainedPropertyBuilder)
-                    validationClosure()
-                    commandObjectMetaClass.constraints = constrainedPropertyBuilder.constrainedProperties
-                } else {
-                    commandObjectMetaClass.constraints = [:]
-                }
-
-				DataBindingUtils.bindObjectToInstance(commandObject, params)
-				return commandObject
-			}
+			addCreateCommandToController(controller, ctx)
         }
     }
 
     def onChange = { event ->
         if (application.isControllerClass(event.source)){
-            //addCreateCommmandToController(event.source)
+            addCreateCommandToController(event.source, event.ctx)
 		}
     }
+
+	def addCreateCommandToController(controller, ctx){
+		controller.metaClass.createCommand = { commandObjectClass,params ->
+			def commandObject = commandObjectClass.newInstance()
+			def commandObjectMetaClass = commandObjectClass.metaClass
+
+			commandObjectMetaClass.setErrors = {Errors errors ->
+				RCH.currentRequestAttributes().setAttribute("${commandObjectClass.name}_errors", errors, 0)
+			}
+			commandObjectMetaClass.getErrors = {->
+				RCH.currentRequestAttributes().getAttribute("${commandObjectClass.name}_errors", 0)
+			}
+
+			commandObjectMetaClass.hasErrors = {->
+				delegate.errors?.hasErrors()
+			}
+			commandObjectMetaClass.validate = {->
+				DomainClassPluginSupport.validateInstance(delegate, ctx)
+			}
+
+			def validationClosure = GCU.getStaticPropertyValue(commandObjectClass, 'constraints')
+			if (validationClosure) {
+				def constrainedPropertyBuilder = new ConstrainedPropertyBuilder(commandObject)
+				validationClosure.setDelegate(constrainedPropertyBuilder)
+				validationClosure()
+				commandObjectMetaClass.constraints = constrainedPropertyBuilder.constrainedProperties
+			} else {
+				commandObjectMetaClass.constraints = [:]
+			}
+
+			DataBindingUtils.bindObjectToInstance(commandObject, params)
+			return commandObject
+		}
+	}
 
     def onConfigChange = { event ->
         // TODO Implement code that is executed when the project configuration changes.
