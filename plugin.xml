@@ -1,0 +1,16 @@
+<plugin name='commando' version='0.1' grailsVersion='1.1'>
+  <author>Zan Thrash</author>
+  <authorEmail>zan@zanthrash.com</authorEmail>
+  <title>Commando</title>
+  <description>Provies a factory to create and properly wire up command objects so you don't have to
+always passs as a parameter to your action.
+</description>
+  <documentation>http://grails.org/Commando+Plugin</documentation>
+  <resources>
+    <resource>DataSource</resource>
+    <resource>UrlMappings</resource>
+  </resources>
+  <dependencies>
+    <plugin name='core' version='1.1' />
+  </dependencies>
+</plugin>
