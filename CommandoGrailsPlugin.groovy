@@ -43,9 +43,10 @@ always passs as a parameter to your action.
 
     def doWithDynamicMethods = { ctx ->
         application.controllerClasses.each { controller ->
-			controller.metaClass.createCommand = { commandObjectClass ->
+			controller.metaClass.createCommand = { commandObjectClass,params ->
 				def commandObject = commandObjectClass.newInstance()
                 def commandObjectMetaClass = commandObjectClass.metaClass
+            
                 commandObjectMetaClass.setErrors = {Errors errors ->
                     RCH.currentRequestAttributes().setAttribute("${commandObjectClass.name}_errors", errors, 0)
                 }
@@ -69,7 +70,7 @@ always passs as a parameter to your action.
                     commandObjectMetaClass.constraints = [:]
                 }
 
-
+				DataBindingUtils.bindObjectToInstance(commandObject, params)
 				return commandObject
 			}
         }
